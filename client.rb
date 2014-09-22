@@ -12,21 +12,27 @@ host = ARGV.shift
 port = ARGV.shift.to_i
 mode = ARGV.shift.downcase
 
-if mode == "udp"
-	s = UDPSocket.new
-	s.connect host, port
-	until s.closed?
-		s.print gets
-		msg, sender = s.recvfrom(30)
-		puts msg
-		s.close if msg.chomp == "Bye!"
-	end
-else
-	s = TCPSocket.new host, port
-	until s.closed?
-		s.print gets
-		puts s.readline
-		if s.eof?; s.close
-		else; s.readline; end
+class Client
+	def initialize host, port, mode
+		if mode == "udp"
+			s = UDPSocket.new
+			s.connect host, port
+			until s.closed?
+				s.print gets
+				msg, sender = s.recvfrom(30)
+				puts msg
+				s.close if msg.chomp == "Bye!"
+			end
+		else
+			s = TCPSocket.new host, port
+			until s.closed?
+				s.print gets
+				puts s.readline
+				if s.eof?; s.close
+				else; s.readline; end
+			end
+		end
 	end
 end
+
+client = Client.new host, port, mode

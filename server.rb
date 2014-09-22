@@ -8,32 +8,39 @@ end
 
 port = ARGV.shift.to_i
 
-# Inicializando UDP
-Thread.start do
-	server = UDPSocket.new
-	server.bind nil, port
-	loop {
-		msg, sender = server.recvfrom(10)
-		if msg.chomp == "exit"
-			server.send "Bye!\n", 0, sender[3], sender[1]
-		else
-			server.send "You typed: #{msg}", 0, sender[3], sender[1]
+class Server
+	def initialize port
+		# Inicializando UDP
+		Thread.start do
+			server = UDPSocket.new
+			server.bind nil, port
+			loop {
+				msg, sender = server.recvfrom(10)
+				process msg, sender
+			}
 		end
-	}
+		
+		# Inicializando TCP
+		server = TCPServer.open(port)
+		loop {
+			Thread.start(server.accept) do |client|
+				puts "aceitou conexão"
+				while
+					msg = client.readline
+					process msg, client.addr
+				end
+			end
+		}
+	end
+	
+	def process msg, sender
+		msg = msg.chomp
+		cmd = msg.split[0].downcase
+		args = msg[(msg.index(' ')+1)..-1]
+		
+	end
+	
+	def 
 end
 
-# Inicializando TCP
-server = TCPServer.open(port)
-loop {
-	Thread.start(server.accept) do |client|
-		puts "aceitou conexão"
-		while (c = client.readline.chomp) != "exit"
-			puts "leu"
-			client.puts "You typed: #{c}"
-			puts "respondeu"
-			client.puts
-		end
-		client.puts "Bye!"
-		client.close
-	end
-}
+server = Server.new port
