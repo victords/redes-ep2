@@ -33,25 +33,56 @@ class TCPTransmitter
 		socket.readline
 	end
 	
-	def listen_to_socket host, port
-		socket = @connections["#{host}|#{port}"]
-		loop do
-			msg = socket.readline
-			@delegate.received_line msg, socket.addr
+	def receive_all
+		Thread.start(host, port) do |host, port|
+			socket = @connections["#{host}|#{port}"]
+			loop do
+				msg = socket.readline
+				@delegate.received_line msg, socket.addr
+			end
 		end
 	end
 end
 
-#class UDPTransmitter
-#	def initialize
-#	end
-#	
-#	def receive_line
-#	end
-#	
-#	def receive bytes
-#	end
-#	
-#	def send msg
-#	end
-#end
+class UDPTransmitter
+	def initialize delegate
+		@delegate = delegate
+		@sockets = {}
+	end
+	
+	def listen_to_port port, limit = nil
+		@socket = UDPSocket.new
+		@socket.bind nil, port
+		loop do
+			puts "1"
+			msg = ""
+			loop do 
+				puts "2"
+				char, sender = @socket.recvfrom(1)
+				puts "3"
+				msg += char
+			  break if char == "\n"
+			end 
+			puts "4"
+			@delegate.received_line msg, sender
+		end
+	end
+	
+	def connect_to host, port
+		s = UDPSocket.new
+		s.connect host, port
+		@sockets["#{host}|#{port}"] = s
+	end
+
+	def answer msg, host, port
+		@socket.send msg, 0, host, port
+	end
+	
+	def send msg, host, port
+		@sockets["#{host}|#{port}"].print msg
+	end
+	
+	def receive_line host, port
+		@sockets["#{host}|#{port}"].readline
+	end
+end
