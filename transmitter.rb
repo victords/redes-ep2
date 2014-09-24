@@ -3,7 +3,7 @@ require 'socket'
 class TCPTransmitter
 	def initialize delegate
 		@delegate = delegate
-		@sockets = {}
+		@connections = {}
 	end
 	
 	def listen_to_port port, limit = nil
@@ -11,9 +11,9 @@ class TCPTransmitter
 		count = 0
 		loop do
 			s = server.accept
-			puts "aceitou conexão"
+			puts "Nova Conexão"
 			host = s.addr[3]; port = s.addr[1]
-			@sockets["#{host}|#{port}"] = s
+			@connections["#{host}|#{port}"] = s
 			@delegate.accepted_connection host, port
 			count += 1
 			break if count == limit
@@ -21,21 +21,20 @@ class TCPTransmitter
 	end
 	
 	def connect_to host, port
-		@sockets["#{host}|#{port}"] = TCPSocket.new host, port
+		@connections["#{host}|#{port}"] = TCPSocket.new host, port
 	end
 	
 	def send msg, host, port
-		@sockets["#{host}|#{port}"].write msg
+		@connections["#{host}|#{port}"].write msg
 	end
 	
 	def receive_line host, port
-		socket = @sockets["#{host}|#{port}"]
-		msg = socket.readline
-		@delegate.received_line msg, socket.addr
+		socket = @connections["#{host}|#{port}"]
+		socket.readline
 	end
 	
 	def listen_to_socket host, port
-		socket = @sockets["#{host}|#{port}"]
+		socket = @connections["#{host}|#{port}"]
 		loop do
 			msg = socket.readline
 			@delegate.received_line msg, socket.addr

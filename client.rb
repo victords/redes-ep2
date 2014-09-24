@@ -5,12 +5,9 @@ class Client
 		@transmitter = transmitter_class.new self
 		@transmitter.connect_to host, port
 		loop do
-			@transmitter.send gets
+			@transmitter.send gets, host, port
+			puts @transmitter.receive_line host, port
 		end
-	end
-	
-	def received msg, sender
-		
 	end
 end
 
