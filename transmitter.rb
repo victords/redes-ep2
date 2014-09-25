@@ -13,34 +13,24 @@ class TCPTransmitter
 			s = server.accept
 			puts "Nova Conexão"
 			host = s.addr[3]; port = s.addr[1]
-			@connections["#{host}|#{port}"] = s
-			@delegate.accepted_connection host, port
-			count += 1
-			break if count == limit
+			# e agora?
 		end
 	end
 	
 	def connect_to host, port
 		@connections["#{host}|#{port}"] = TCPSocket.new host, port
 	end
+
+	def answer msg, host, port
+		send msg, host, port
+	end
 	
 	def send msg, host, port
-		@connections["#{host}|#{port}"].write msg
+		@connections["#{host}|#{port}"].print msg
 	end
 	
 	def receive_line host, port
-		socket = @connections["#{host}|#{port}"]
-		socket.readline
-	end
-	
-	def receive_all
-		Thread.start(host, port) do |host, port|
-			socket = @connections["#{host}|#{port}"]
-			loop do
-				msg = socket.readline
-				@delegate.received_line msg, socket.addr
-			end
-		end
+		@connections["#{host}|#{port}"].readline
 	end
 end
 
@@ -54,16 +44,13 @@ class UDPTransmitter
 		@socket = UDPSocket.new
 		@socket.bind nil, port
 		loop do
-			puts "1"
 			msg = ""
-			loop do 
-				puts "2"
+			sender = nil
+			loop do
 				char, sender = @socket.recvfrom(1)
-				puts "3"
 				msg += char
-			  break if char == "\n"
-			end 
-			puts "4"
+				break if char == "\n"
+			end
 			@delegate.received_line msg, sender
 		end
 	end

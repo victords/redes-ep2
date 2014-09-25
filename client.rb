@@ -5,7 +5,10 @@ class Client
 		@transmitter = transmitter_class.new self
 		@transmitter.connect_to host, port
 		loop do
-			@transmitter.send gets, host, port
+			s = gets
+			s.chars.each do |c|
+				@transmitter.send c, host, port
+			end
 			puts @transmitter.receive_line host, port
 		end
 	end
