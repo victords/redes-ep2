@@ -7,23 +7,22 @@ class Server
 		@transmitter.listen_to_port port
 	end
 	
-	def received_line msg, sender
+	def received_line msg, addr
 		puts "Mensagem recebida: #{msg}"
 		msg = msg.chomp
 		cmd = msg.split[0].downcase
 		args = msg[(msg.index(' ')+1)..-1] if msg.index(' ')
-		process_command cmd, args, sender
+		process_command cmd, args, addr
 	end
 
-	def process_command cmd, args, sender
-		host = sender[3]; port = sender[1]
+	def process_command cmd, args, addr
 		case cmd
 		when "login"
-			@transmitter.answer "login\n", host, port
+			@transmitter.answer "login\n", addr
 		when "logout"
-			@transmitter.answer "logout\n", host, port
+			@transmitter.answer "logout\n", addr
 		else
-			@transmitter.answer "#{cmd}???\n", host, port
+			@transmitter.answer "#{cmd}???\n", addr
 		end
 	end
 end
