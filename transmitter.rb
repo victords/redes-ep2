@@ -11,11 +11,6 @@ class Address
 	def key
 		"#{@host}|#{@port}"
 	end
-	
-	def self.from_key key
-		k = key.split('|')
-		Address.new k[0], k[1].to_i
-	end
 end
 
 class TCPTransmitter
@@ -28,7 +23,7 @@ class TCPTransmitter
 	def listen_to_port port, limit = nil
 		server = TCPServer.open(port)
 		count = 0
-		Thread.start(server) do |server|
+		t = Thread.start(server) do |server|
 			loop do
 				s = server.accept
 				puts "Nova Conexão"
@@ -42,20 +37,20 @@ class TCPTransmitter
 						puts "aguardando linha #{addr.port}"
 						msg = conn.readline
 						puts "linha lida #{addr.port}"
-						@messages.push([addr.key, msg])
+						if @messages.empty?
+							@delegate.received_line msg, addr
+						else
+							p_msg, p_addr = @messages.shift
+							@delegate.received_line p_msg, p_addr
+							@messages.push([msg, addr])
+						end
 						puts "linha adicionada #{addr.port}"
 					end
 					puts "finalizando conexão"
 				end
 			end
 		end
-		loop do
-			unless @messages.empty?
-				key, value = @messages.shift
-				puts key
-				@delegate.received_line value, Address.from_key(key)
-			end
-		end
+		t.join
 	end
 	
 	def connect_to addr
