@@ -2,9 +2,9 @@ require_relative 'transmitter'
 
 class Client
 	def initialize host, port, transmitter_class
-		@transmitter = transmitter_class.new self
-		@transmitter.connect_to host, port
 		addr = Address.new(host, port)
+		@transmitter = transmitter_class.new self
+		@transmitter.connect_to addr
 		loop do
 			s = gets
 			next if s == "\n"

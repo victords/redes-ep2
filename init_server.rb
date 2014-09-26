@@ -9,9 +9,9 @@ end
 
 port = ARGV.shift.to_i
 
-# if fork
+if fork
 	udp_server = Server.new port, UDPTransmitter
-# else
-# 	tcp_server = Server.new port, TCPTransmitter	
-# end
+else
+	tcp_server = Server.new port, TCPTransmitter	
+end
 
