@@ -42,6 +42,7 @@ class Server
 		if Users[addr.key]
 			Users.logout addr
 			@transmitter.answer "Bye, bye!\n", addr
+			@transmitter.close_connection addr
 		else
 			# client deve impedir que isso ocorra
 			error "user not logged in!", addr

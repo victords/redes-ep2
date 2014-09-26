@@ -17,7 +17,6 @@ class TCPTransmitter
 	def initialize delegate
 		@delegate = delegate
 		@connections = {}
-		@messages = []
 	end
 	
 	def listen_to_port port, limit = nil
@@ -33,14 +32,9 @@ class TCPTransmitter
 					conn = @connections[addr.key]
 					until conn.closed?
 						msg = conn.readline
-						if @messages.empty?
-							@delegate.received_line msg, addr
-						else
-							p_msg, p_addr = @messages.shift
-							@delegate.received_line p_msg, p_addr
-							@messages.push([msg, addr])
-						end
+						@delegate.received_line msg, addr
 					end
+					puts "saiu..."
 				end
 			end
 		end
@@ -49,6 +43,11 @@ class TCPTransmitter
 	
 	def connect_to addr
 		@connections[addr.key] = TCPSocket.new addr.host, addr.port
+	end
+	
+	def close_connection addr
+		@connections[addr.key].close
+		@connections.delete addr.key
 	end
 	
 	def answer msg, addr
@@ -92,6 +91,10 @@ class UDPTransmitter
 		s = UDPSocket.new
 		s.connect addr.host, addr.port
 		@sockets[addr.key] = s
+	end
+	
+	def close_connection addr
+		
 	end
 
 	def answer msg, addr
