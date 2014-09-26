@@ -26,17 +26,13 @@ class TCPTransmitter
 		t = Thread.start(server) do |server|
 			loop do
 				s = server.accept
-				puts "Nova Conexão"
 				addr = Address.new(s.peeraddr[3], s.peeraddr[1])
 				puts addr.key
 				@connections[addr.key] = s
 				Thread.start(addr) do |addr|
-					puts "iniciando #{addr.port}"
 					conn = @connections[addr.key]
 					until conn.closed?
-						puts "aguardando linha #{addr.port}"
 						msg = conn.readline
-						puts "linha lida #{addr.port}"
 						if @messages.empty?
 							@delegate.received_line msg, addr
 						else
@@ -44,9 +40,7 @@ class TCPTransmitter
 							@delegate.received_line p_msg, p_addr
 							@messages.push([msg, addr])
 						end
-						puts "linha adicionada #{addr.port}"
 					end
-					puts "finalizando conexão"
 				end
 			end
 		end
@@ -58,7 +52,6 @@ class TCPTransmitter
 	end
 	
 	def answer msg, addr
-		puts "respondendo #{addr.port}"
 		send msg, addr
 	end
 	

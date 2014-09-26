@@ -14,15 +14,41 @@ class Server
 		args = msg[(msg.index(' ')+1)..-1] if msg.index(' ')
 		process_command cmd, args, addr
 	end
-
+	
 	def process_command cmd, args, addr
 		case cmd
 		when "login"
-			@transmitter.answer "login\n", addr
+			process_login args, addr
 		when "logout"
-			@transmitter.answer "logout\n", addr
+			process_logout addr
 		else
-			@transmitter.answer "#{cmd}???\n", addr
+			error "command not recognized.", addr
 		end
+	end
+	
+	def process_login user_name, addr
+		if user_name.nil?
+			# client deve impedir que isso ocorra
+			error "you must provide a user name.", addr
+		elsif Users[user_name]
+			error "user #{user_name} already logged in.", addr
+		else
+			Users.login user_name, addr
+			@transmitter.answer "Welcome, #{user_name}!\n", addr
+		end
+	end
+	
+	def process_logout addr
+		if Users[addr.key]
+			Users.logout addr
+			@transmitter.answer "Bye, bye!\n", addr
+		else
+			# client deve impedir que isso ocorra
+			error "user not logged in!", addr
+		end
+	end
+	
+	def error msg, addr
+		@transmitter.answer "Error: #{msg}\n", addr
 	end
 end

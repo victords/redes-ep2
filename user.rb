@@ -1,11 +1,12 @@
 class User
-	def initialize name, host, port
+	attr_reader :name
+	
+	def initialize name, addr
 		@name = name
-		@host = host
-		@port = port
+		@addr = addr
 		@heartbeat = Thread.new {
 			sleep 5
-			Users.logout @host, @port
+			Users.logout @addr
 		}
 	end
 	
@@ -13,27 +14,30 @@ class User
 		@heartbeat.kill
 		@heartbeat = Thread.new {
 			sleep 5
-			Users.logout @host, @port
+			Users.logout @addr
 		}
 	end
 end
 
 class Users
-	@@users = {}
+	@@users_by_addr = {}
+	@@users_by_name = {}
 	
-	def self.[] host, port
-		@@users["#{host}|#{port}"]
+	def self.[] key
+		return @@users_by_addr[key] if @@users_by_addr[key]
+		@@users_by_name[key]
 	end
 	
-	def self.login name, host, port
-		@@users["#{host}|#{port}"] = User.new name, host, port
+	def self.login name, addr
+		@@users_by_name[name] = @@users_by_addr[addr.key] = User.new name, addr
 	end
 	
-	def self.logout host, port
-		@@users.delete "#{host}|#{port}"
+	def self.logout addr
+		u = @@users_by_addr.delete addr.key
+		@@users_by_name.delete u.name
 	end
 	
-	def self.heartbeat host, port
-		@@users["#{host}|#{port}"].heartbeat
+	def self.heartbeat
+		@@users_by_addr.each_value { |u| u.heartbeat }
 	end
 end
