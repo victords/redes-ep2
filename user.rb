@@ -36,8 +36,4 @@ class Users
 		u = @@users_by_addr.delete addr.key
 		@@users_by_name.delete u.name
 	end
-	
-	def self.heartbeat
-		@@users_by_addr.each_value { |u| u.heartbeat }
-	end
 end

@@ -6,29 +6,45 @@ class Client
 		@transmitter = transmitter_class.new self
 		@transmitter.connect_to @server_addr
 		@semaphore = Mutex.new
-		heartbeat @server_addr
+		
+		@logged = false
+		until @logged
+			print "User: "
+			s = gets
+			next if s == "\n"
+			ans = communicate_with_server("login #{s}")
+			code = ans.split[0].to_i
+			msg = ans[(ans.index(' ')+1)..-1]
+			puts msg
+			if code == 201
+				@logged = true
+				start_heartbeat
+			end
+		end
 		loop do
 			s = gets
 			next if s == "\n"
-			send_server s, @server_addr
-			puts @transmitter.receive_line @server_addr
+			puts communicate_with_server(s)
 		end
 	end
-
-	def heartbeat server_addr
-		sleep 4
+	
+	def start_heartbeat
 		Thread.new do
-			send_server "htbeat", server_addr
-			puts @transmitter.receive_line server_addr
-			sleep 10
+			loop do
+				ans = communicate_with_server "htbeat\n"
+				if ans.split[0].to_i != 200
+					puts "deu merda!"
+				end
+				sleep 10
+			end
 		end
 	end
-
-	def send_server msg, server_addr
+	
+	def communicate_with_server msg
 		@semaphore.synchronize do
-			@transmitter.send msg, server_addr
+			@transmitter.send msg, @server_addr
+			@transmitter.receive_line @server_addr
 		end
 	end
 end
-
 

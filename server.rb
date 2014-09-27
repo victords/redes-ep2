@@ -21,35 +21,46 @@ class Server
 			process_login args, addr
 		when "logout"
 			process_logout addr
+		when "htbeat"
+			process_heartbeat addr
 		else
-			error "command not recognized.", addr
+			error 501, "command not recognized.", addr
 		end
 	end
 	
 	def process_login user_name, addr
 		if user_name.nil?
 			# client deve impedir que isso ocorra
-			error "you must provide a user name.", addr
+			error 501, "you must provide a user name.", addr
 		elsif Users[user_name]
-			error "user #{user_name} already logged in.", addr
+			error 401, "user #{user_name} already logged in.", addr
 		else
 			Users.login user_name, addr
-			@transmitter.answer "Welcome, #{user_name}!\n", addr
+			answer 201, "Welcome, #{user_name}!", addr
 		end
 	end
 	
 	def process_logout addr
 		if Users[addr.key]
 			Users.logout addr
-			@transmitter.answer "Bye, bye!\n", addr
+			@transmitter.answer 202, "Bye, bye!", addr
 			@transmitter.close_connection addr
 		else
 			# client deve impedir que isso ocorra
-			error "user not logged in!", addr
+			error 402, "user not logged in!", addr
 		end
 	end
 	
-	def error msg, addr
-		@transmitter.answer "Error: #{msg}\n", addr
+	def process_heartbeat addr
+		Users[addr.key].heartbeat
+		answer 200, "OK", addr
+	end
+	
+	def answer code, msg, addr
+		@transmitter.answer "#{code} #{msg}\n", addr
+	end
+	
+	def error code, msg, addr
+		@transmitter.answer "#{code} Error: #{msg}\n", addr
 	end
 end
