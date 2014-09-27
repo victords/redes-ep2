@@ -1,0 +1,43 @@
+### RSCP - Ridiculously simple chat protocol ###
+
+login USER  -> Tenta fazer o login do usuário com nome USER
+               -> 201 Login efetuado
+               -> 400 Erro genérico
+               -> 401 Usuário já logado (deve ser evitado pelo client)
+logout      -> Faz logout do usuário atual
+               -> 202 Logout efetuado
+               -> 400 Erro genérico
+               -> 402 Usuário não logado (deve ser evitado pelo client)
+htbeat      -> Heartbeat do client
+               -> 200 OK
+               -> 400 Erro genérico
+               -> 402 Usuário não logado (deve ser evitado pelo client)
+list        -> Listar usuários logados no mesmo modo (TCP ou UDP)
+               -> 200 OK
+                  USER1
+                  USER2
+                  USER3
+                  ...
+               -> 400 Erro genérico
+               -> 402 Usuário não logado (deve ser evitado pelo client)
+talkto USER -> Tenta iniciar conversa com USER
+               -> 200 a.b.c.d:p OK, conectar no host a.b.c.d, porta p
+               -> 400 Erro genérico
+               -> 402 Usuário não logado (deve ser evitado pelo client)
+               -> 404 Usuário USER não encontrado
+shutup      -> Finaliza conversa com usuário atual
+               -> 200 OK
+               -> 400 Erro genérico
+               -> 402 Usuário não logado (deve ser evitado pelo client)
+sndmsg MSG  -> Envia a mensagem MSG para o usuário com o qual se está conversando
+               -> 200 OK
+               -> 400 Erro genérico
+               -> 402 Usuário não logado (deve ser evitado pelo client)
+               -> 403 Não conectado a nenhum usuário (deve ser evitado pelo client)
+sndfil SIZE -> Prepara o usuário conectado para receber um arquivo de tamanho SIZE bytes
+               -> 203 OK, aguardando envio
+                  -> 200 OK
+                  -> 400 Erro genérico
+               -> 400 Erro genérico
+               -> 402 Usuário não logado (deve ser evitado pelo client)
+               -> 403 Não conectado a nenhum usuário (deve ser evitado pelo client)
