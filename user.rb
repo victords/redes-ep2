@@ -5,7 +5,7 @@ class User
 		@name = name
 		@addr = addr
 		@heartbeat = Thread.new {
-			sleep 5
+			sleep 10
 			Users.logout @addr
 		}
 	end
@@ -13,7 +13,7 @@ class User
 	def heartbeat
 		@heartbeat.kill
 		@heartbeat = Thread.new {
-			sleep 5
+			sleep 10
 			Users.logout @addr
 		}
 	end

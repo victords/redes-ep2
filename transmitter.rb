@@ -102,7 +102,9 @@ class UDPTransmitter
 	end
 	
 	def send msg, addr
-		@sockets[addr.key].print msg
+		msg.chars.each do |c|
+			@sockets[addr.key].print c
+		end
 	end
 	
 	def receive_line addr
