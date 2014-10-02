@@ -25,7 +25,8 @@ class Client
 			s = gets
 			next if s == "\n"
 			ans = communicate_with_server(s)
-			exit if ans.to_i == 201
+			exit if ans.to_i == 202
+			puts ans
 		end
 	end
 	
@@ -43,7 +44,7 @@ class Client
 	
 	def communicate_with_server msg
 		@semaphore.synchronize do
-			@transmitter.send msg, @server_addr
+			exit if @transmitter.send(msg, @server_addr) == :error
 			@transmitter.receive_line @server_addr
 		end
 	end

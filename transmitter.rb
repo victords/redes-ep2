@@ -17,6 +17,7 @@ class TCPTransmitter
 	def initialize delegate
 		@delegate = delegate
 		@connections = {}
+		@threads = []
 	end
 	
 	def listen_to_port port, limit = nil
@@ -28,16 +29,17 @@ class TCPTransmitter
 				addr = Address.new(s.peeraddr[3], s.peeraddr[1])
 				puts addr.key
 				@connections[addr.key] = s
-				Thread.start(addr) do |addr|
+				@threads.push(Thread.start(addr) do |addr|
 					conn = @connections[addr.key]
 					until conn.closed?
 						msg = conn.readline
 						@delegate.received_line msg, addr
 					end
 					puts "saiu..."
-				end
+				end)
 			end
 		end
+		@threads << t
 		t.join
 	end
 	
@@ -55,7 +57,12 @@ class TCPTransmitter
 	end
 	
 	def send msg, addr
-		@connections[addr.key].print msg
+		begin
+			@connections[addr.key].print msg
+		rescue
+			puts "The server has closed the connection!"
+			:error
+		end
 	end
 	
 	def receive_line addr
@@ -63,7 +70,8 @@ class TCPTransmitter
 	end
 	
 	def close
-		@connections.each { |c| c.close }
+		@threads.each { |t| t.kill }
+		@connections.each_value { |c| c.close }
 	end
 end
 
@@ -106,8 +114,13 @@ class UDPTransmitter
 	end
 	
 	def send msg, addr
-		msg.chars.each do |c|
-			@sockets[addr.key].print c
+		begin
+			msg.chars.each do |c|
+				@sockets[addr.key].print c
+			end
+		rescue
+			puts "The server has closed the connection!"
+			:error
 		end
 	end
 	

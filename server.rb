@@ -3,8 +3,13 @@ require_relative 'transmitter'
 
 class Server
 	def initialize port, transmitter_class
+		@port = port
 		@transmitter = transmitter_class.new self
-		@transmitter.listen_to_port port
+		@type = transmitter_class.to_s[0..2]
+	end
+	
+	def start
+		@transmitter.listen_to_port @port
 	end
 	
 	def received_line msg, addr
@@ -16,8 +21,9 @@ class Server
 	end
 	
 	def close
-		puts "Closing server. See ya!"
+		puts "\nClosing #{@type} server..."
 		@transmitter.close
+		puts "See ya!"
 	end
 	
 private
