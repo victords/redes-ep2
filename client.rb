@@ -24,7 +24,8 @@ class Client
 		loop do
 			s = gets
 			next if s == "\n"
-			puts communicate_with_server(s)
+			ans = communicate_with_server(s)
+			exit if ans.to_i == 201
 		end
 	end
 	

@@ -11,7 +11,13 @@ port = ARGV.shift.to_i
 
 if fork
 	udp_server = Server.new port, UDPTransmitter
+	trap("INT") do
+		udp_server.close
+	end
 else
-	tcp_server = Server.new port, TCPTransmitter	
+	tcp_server = Server.new port, TCPTransmitter
+	trap("INT") do
+		tcp_server.close
+	end
 end
 

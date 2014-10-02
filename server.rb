@@ -8,13 +8,20 @@ class Server
 	end
 	
 	def received_line msg, addr
-		puts "Mensagem recebida: #{msg}"
+		puts "Mensagem recebida: #{msg} #{addr}"
 		msg = msg.chomp
 		cmd = msg.split[0].downcase
 		args = msg[(msg.index(' ')+1)..-1] if msg.index(' ')
 		process_command cmd, args, addr
 	end
 	
+	def close
+		puts "Closing server. See ya!"
+		@transmitter.close
+	end
+	
+private
+
 	def process_command cmd, args, addr
 		case cmd
 		when "login"
@@ -43,7 +50,7 @@ class Server
 	def process_logout addr
 		if Users[addr.key]
 			Users.logout addr
-			@transmitter.answer 202, "Bye, bye!", addr
+			answer 202, "Bye, bye!", addr
 			@transmitter.close_connection addr
 		else
 			# client deve impedir que isso ocorra

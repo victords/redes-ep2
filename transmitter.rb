@@ -61,6 +61,10 @@ class TCPTransmitter
 	def receive_line addr
 		@connections[addr.key].readline
 	end
+	
+	def close
+		@connections.each { |c| c.close }
+	end
 end
 
 class UDPTransmitter
@@ -109,5 +113,9 @@ class UDPTransmitter
 	
 	def receive_line addr
 		@sockets[addr.key].readline
+	end
+	
+	def close
+		
 	end
 end
