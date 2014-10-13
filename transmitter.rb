@@ -15,11 +15,12 @@ end
 
 class TCPTransmitter
 	def initialize delegate
-		@delegate = delegate
 		@connections = {}
+		@commands_queues = {}
+		@messages_queues = {}
 	end
 	
-	def listen_to_port port, limit = nil
+	def open_port port, limit = nil
 		server = TCPServer.open(port)
 		count = 0
 		t = Thread.start(server) do |server|
@@ -28,21 +29,31 @@ class TCPTransmitter
 				addr = Address.new(s.peeraddr[3], s.peeraddr[1])
 				puts addr.key
 				@connections[addr.key] = s
-				Thread.start(addr) do |addr|
-					conn = @connections[addr.key]
-					until conn.closed?
-						msg = conn.readline
-						@delegate.received_line msg, addr
-					end
-					puts "saiu..."
-				end
+				listen_to_socket addr
 			end
 		end
-		t.join
+	end
+
+	def listen_to_socket addr
+		Thread.start(addr) do |addr|
+			@commands_queues[add.key] = Queue.new
+			@commands_queues[add.key] = Queue.new
+			conn = @connections[addr.key]
+			until conn.closed?
+				msg = conn.readline
+				if msg[0].is_a? Numeric
+					@@commands_queues[add.key] << msg
+				else
+					@commands_queues[add.key] << msg
+				end
+			end
+			puts "saiu..."
+		end
 	end
 	
 	def connect_to addr
 		@connections[addr.key] = TCPSocket.new addr.host, addr.port
+		listen_to_socket addr
 	end
 	
 	def close_connection addr
@@ -58,15 +69,23 @@ class TCPTransmitter
 		@connections[addr.key].print msg
 	end
 	
-	def receive_line addr
+	def receive_command addr
+		if addr
+			
+		else
+			
+		end
 		@connections[addr.key].readline
 	end
+
+
 end
 
 class UDPTransmitter
 	def initialize delegate
-		@delegate = delegate
 		@sockets = {}
+		@commands_queue = Queue.new
+		@messages_queue = Queue.new
 	end
 	
 	def listen_to_port port, limit = nil
