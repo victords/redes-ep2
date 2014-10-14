@@ -3,18 +3,31 @@ require_relative 'transmitter'
 
 class Server
 	def initialize port, transmitter_class
-		@transmitter = transmitter_class.new self
-		@transmitter.listen_to_port port
+		@port = port
+		@transmitter = transmitter_class.new
+		@type = transmitter_class.to_s[0..2]
 	end
 	
-	def received_line msg, addr
-		puts "Mensagem recebida: #{msg}"
-		msg = msg.chomp
-		cmd = msg.split[0].downcase
-		args = msg[(msg.index(' ')+1)..-1] if msg.index(' ')
-		process_command cmd, args, addr
+	def start
+		@transmitter.open_port @port
+		loop do
+			msg, addr = @transmitter.receive_command
+			puts "Mensagem recebida: #{msg} #{addr}"
+			msg = msg.chomp
+			cmd = msg.split[0].downcase
+			args = msg[(msg.index(' ')+1)..-1] if msg.index(' ')
+			process_command cmd, args, addr
+		end
 	end
 	
+	def close
+		puts "\nClosing #{@type} server..."
+		@transmitter.close
+		puts "See ya!"
+	end
+	
+private
+
 	def process_command cmd, args, addr
 		case cmd
 		when "login"
@@ -43,7 +56,7 @@ class Server
 	def process_logout addr
 		if Users[addr.key]
 			Users.logout addr
-			@transmitter.answer 202, "Bye, bye!", addr
+			answer 202, "Bye, bye!", addr
 			@transmitter.close_connection addr
 		else
 			# client deve impedir que isso ocorra

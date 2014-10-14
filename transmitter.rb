@@ -14,10 +14,13 @@ class Address
 end
 
 class TCPTransmitter
-	def initialize delegate
+	def initialize
 		@connections = {}
+		@has_command = Queue.new
+		@has_message = Queue.new
 		@commands_queues = {}
 		@messages_queues = {}
+		@threads = []
 	end
 	
 	def open_port port, limit = nil
@@ -27,28 +30,30 @@ class TCPTransmitter
 			loop do
 				s = server.accept
 				addr = Address.new(s.peeraddr[3], s.peeraddr[1])
-				puts addr.key
 				@connections[addr.key] = s
 				listen_to_socket addr
 			end
 		end
+		@threads << t
 	end
 
 	def listen_to_socket addr
-		Thread.start(addr) do |addr|
-			@commands_queues[add.key] = Queue.new
-			@commands_queues[add.key] = Queue.new
+		@threads.push(Thread.start(addr) do |addr|
+			@commands_queues[addr.key] = Queue.new
+			@messages_queues[addr.key] = Queue.new
 			conn = @connections[addr.key]
 			until conn.closed?
 				msg = conn.readline
 				if msg[0].is_a? Numeric
-					@@commands_queues[add.key] << msg
+					@messages_queues[addr.key] << msg
+					@has_message << addr
 				else
-					@commands_queues[add.key] << msg
+					@commands_queues[addr.key] << msg
+					@has_command << addr
 				end
 			end
 			puts "saiu..."
-		end
+		end)
 	end
 	
 	def connect_to addr
@@ -66,19 +71,30 @@ class TCPTransmitter
 	end
 	
 	def send msg, addr
-		@connections[addr.key].print msg
+		begin
+			@connections[addr.key].print msg
+		rescue
+			puts "The server has closed the connection!"
+			:error
+		end
 	end
 	
-	def receive_command addr
-		if addr
-			
-		else
-			
-		end
-		@connections[addr.key].readline
+	def receive_command addr = nil
+		puts "aqui"
+		addr = @has_command.pop if addr.nil?
+		puts @commands_queues.size
+		[@commands_queues[addr.key].pop, addr]
 	end
 
-
+	def receive_message addr
+		addr = @has_message.pop if addr.nil?
+		[@messages_queues[addr.key].pop, addr]
+	end
+	
+	def close
+		@threads.each { |t| t.kill }
+		@connections.each_value { |c| c.close }
+	end
 end
 
 class UDPTransmitter
@@ -121,12 +137,21 @@ class UDPTransmitter
 	end
 	
 	def send msg, addr
-		msg.chars.each do |c|
-			@sockets[addr.key].print c
+		begin
+			msg.chars.each do |c|
+				@sockets[addr.key].print c
+			end
+		rescue
+			puts "The server has closed the connection!"
+			:error
 		end
 	end
 	
 	def receive_line addr
 		@sockets[addr.key].readline
+	end
+	
+	def close
+		
 	end
 end

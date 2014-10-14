@@ -3,7 +3,7 @@ require_relative 'transmitter'
 class Client
 	def initialize host, port, transmitter_class
 		@server_addr = Address.new(host, port)
-		@transmitter = transmitter_class.new self
+		@transmitter = transmitter_class.new
 		@transmitter.connect_to @server_addr
 		@semaphore = Mutex.new
 		
@@ -24,7 +24,9 @@ class Client
 		loop do
 			s = gets
 			next if s == "\n"
-			puts communicate_with_server(s)
+			ans = communicate_with_server(s)
+			exit if ans.to_i == 202
+			puts ans
 		end
 	end
 	
@@ -42,8 +44,9 @@ class Client
 	
 	def communicate_with_server msg
 		@semaphore.synchronize do
-			@transmitter.send msg, @server_addr
-			@transmitter.receive_line @server_addr
+			exit if @transmitter.send(msg, @server_addr) == :error
+			msg, addr = @transmitter.receive_message @server_addr
+			msg
 		end
 	end
 end
