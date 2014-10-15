@@ -12,7 +12,6 @@ class Server
 		@transmitter.open_port @port
 		loop do
 			msg, addr = @transmitter.receive
-			puts "Mensagem recebida: #{msg} #{addr.host} #{addr.port}"
 			msg = msg.chomp
 			cmd = msg.split[0].downcase
 			args = msg[(msg.index(' ')+1)..-1] if msg.index(' ')
@@ -36,6 +35,8 @@ private
 			process_logout addr
 		when "htbeat"
 			process_heartbeat addr
+		when "list"
+			process_list addr
 		else
 			error 501, "command not recognized.", addr
 		end
@@ -67,6 +68,14 @@ private
 	def process_heartbeat addr
 		Users[addr.key].heartbeat
 		answer 200, "OK", addr
+	end
+
+	def process_list addr
+		s = ""
+		Users.all.each_with_index do |u, i|
+			s += "#{i+1}. #{u.name} (since #{u.login_time});"
+		end
+		answer 200, s, addr
 	end
 	
 	def answer code, msg, addr

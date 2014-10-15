@@ -1,9 +1,10 @@
 class User
-	attr_reader :name
+	attr_reader :name, :addr, :login_time
 	
 	def initialize name, addr
 		@name = name
 		@addr = addr
+		@login_time = Time.now.strftime("%d/%m/%Y %H:%M")
 		@heartbeat = Thread.new {
 			sleep 12
 			Users.logout @addr
@@ -35,5 +36,9 @@ class Users
 	def self.logout addr
 		u = @@users_by_addr.delete addr.key
 		@@users_by_name.delete u.name
+	end
+
+	def self.all
+		@@users_by_name.values.sort_by { |u| u.name }
 	end
 end

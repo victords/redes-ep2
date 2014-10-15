@@ -4,7 +4,7 @@ class Address
 	attr_reader :host, :port
 	
 	def initialize host, port
-		host = "127.0.0.1" if host == "localhost"
+		host = "localhost" if host == "127.0.0.1"
 		@host = host
 		@port = port
 	end
@@ -210,7 +210,7 @@ class UDPTransmitter
 	
 	def close
 		@threads.each { |t| t.kill }
-		@sockets.each_value { |c| c.close }
+		@sockets.each { |c| c.close }
 	end
 
 	def init_queues_if_nil addr
