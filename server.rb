@@ -12,7 +12,7 @@ class Server
 		@transmitter.open_port @port
 		loop do
 			msg, addr = @transmitter.receive
-			puts "Mensagem recebida: #{msg} #{addr}"
+			puts "Mensagem recebida: #{msg} #{addr.host} #{addr.port}"
 			msg = msg.chomp
 			cmd = msg.split[0].downcase
 			args = msg[(msg.index(' ')+1)..-1] if msg.index(' ')
@@ -70,10 +70,10 @@ private
 	end
 	
 	def answer code, msg, addr
-		@transmitter.answer "#{code} #{msg}\n", addr
+		@transmitter.send "#{code} #{msg}\n", addr
 	end
 	
 	def error code, msg, addr
-		@transmitter.answer "#{code} Error: #{msg}\n", addr
+		@transmitter.send "#{code} Error: #{msg}\n", addr
 	end
 end

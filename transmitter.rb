@@ -4,6 +4,7 @@ class Address
 	attr_reader :host, :port
 	
 	def initialize host, port
+		host = "127.0.0.1" if host == "localhost"
 		@host = host
 		@port = port
 	end
@@ -125,22 +126,25 @@ class UDPTransmitter
 		@sockets << s
 		s.bind nil, port
 		addr = Address.new(nil, port)
-		@connections[addr] = s
+		@connections[addr.key] = s
 		listen_to_socket addr
 	end
 	
 	def connect_to addr
 		s = UDPSocket.new
+		s.bind nil, 0 
 		@sockets << s
 		@connections[addr.key] = s
+		init_queues_if_nil addr
 		listen_to_socket addr
 	end
 	
 	def listen_to_socket sock_addr
 		@threads.push(Thread.start(sock_addr) do |sock_addr|
-			s = @connections[sock_addr]
+			s = @connections[sock_addr.key]
 			loop do
 				msg, addr = read_line s
+				init_queues_if_nil addr
 				if msg[0].to_i > 0
 					@messages_queues[addr.key] << msg
 					@message_addr_queue << addr
@@ -179,8 +183,8 @@ class UDPTransmitter
 			msg.chars.each do |c|
 				s.send c, 0, addr.host, addr.port
 			end
-		rescue
-			puts "The server has closed the connection!"
+		rescue Exception => e
+			puts e.message
 			:error
 		end
 	end
@@ -191,12 +195,14 @@ class UDPTransmitter
 		addrs = type == :command ? @command_addr_queue : @message_addr_queue
 		has = type == :command ? @has_command : @has_message
 		if addr
+			init_queues_if_nil addr
 			msg = queues[addr.key].pop
 			has.pop
 			addrs.delete_at(addrs.index(addr) || addrs.length)
 		else
 			has.pop
 			addr = addrs.shift
+			init_queues_if_nil addr
 			msg = queues[addr.key].pop
 		end
 		[msg, addr]
@@ -205,5 +211,10 @@ class UDPTransmitter
 	def close
 		@threads.each { |t| t.kill }
 		@sockets.each_value { |c| c.close }
+	end
+
+	def init_queues_if_nil addr
+		@commands_queues[addr.key] = Queue.new if @commands_queues[addr.key].nil?
+		@messages_queues[addr.key] = Queue.new if @messages_queues[addr.key].nil?
 	end
 end
