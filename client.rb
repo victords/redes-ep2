@@ -45,9 +45,8 @@ class Client
 	def communicate_with_server msg
 		@semaphore.synchronize do
 			exit if @transmitter.send(msg, @server_addr) == :error
-			msg, addr = @transmitter.receive_message @server_addr
+			msg, addr = @transmitter.receive :message, @server_addr
 			msg
 		end
 	end
 end
-

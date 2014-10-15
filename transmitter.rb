@@ -11,6 +11,10 @@ class Address
 	def key
 		"#{@host}|#{@port}"
 	end
+
+	def == other
+		@host == other.host and @port == other.port
+	end
 end
 
 class TCPTransmitter
@@ -18,12 +22,14 @@ class TCPTransmitter
 		@connections = {}
 		@has_command = Queue.new
 		@has_message = Queue.new
+		@command_addr_queue = []
+		@message_addr_queue = []
 		@commands_queues = {}
 		@messages_queues = {}
 		@threads = []
 	end
 	
-	def open_port port, limit = nil
+	def open_port port
 		server = TCPServer.open(port)
 		count = 0
 		t = Thread.start(server) do |server|
@@ -36,6 +42,11 @@ class TCPTransmitter
 		end
 		@threads << t
 	end
+	
+	def connect_to addr
+		@connections[addr.key] = TCPSocket.new addr.host, addr.port
+		listen_to_socket addr
+	end
 
 	def listen_to_socket addr
 		@threads.push(Thread.start(addr) do |addr|
@@ -44,30 +55,23 @@ class TCPTransmitter
 			conn = @connections[addr.key]
 			until conn.closed?
 				msg = conn.readline
-				if msg[0].is_a? Numeric
+				if msg[0].to_i > 0
 					@messages_queues[addr.key] << msg
-					@has_message << addr
+					@message_addr_queue << addr
+					@has_message << 0
 				else
 					@commands_queues[addr.key] << msg
-					@has_command << addr
+					@command_addr_queue << addr
+					@has_command << 0
 				end
 			end
 			puts "saiu..."
 		end)
 	end
 	
-	def connect_to addr
-		@connections[addr.key] = TCPSocket.new addr.host, addr.port
-		listen_to_socket addr
-	end
-	
 	def close_connection addr
 		@connections[addr.key].close
 		@connections.delete addr.key
-	end
-	
-	def answer msg, addr
-		send msg, addr
 	end
 	
 	def send msg, addr
@@ -79,16 +83,21 @@ class TCPTransmitter
 		end
 	end
 	
-	def receive_command addr = nil
-		puts "aqui"
-		addr = @has_command.pop if addr.nil?
-		puts @commands_queues.size
-		[@commands_queues[addr.key].pop, addr]
-	end
-
-	def receive_message addr
-		addr = @has_message.pop if addr.nil?
-		[@messages_queues[addr.key].pop, addr]
+	def receive type = :command, addr = nil
+		msg = nil
+		queues = type == :command ? @commands_queues : @messages_queues
+		addrs = type == :command ? @command_addr_queue : @message_addr_queue
+		has = type == :command ? @has_command : @has_message
+		if addr
+			msg = queues[addr.key].pop
+			has.pop
+			addrs.delete_at(addrs.index(addr) || addrs.length)
+		else
+			has.pop
+			addr = addrs.shift
+			msg = queues[addr.key].pop
+		end
+		[msg, addr]
 	end
 	
 	def close
@@ -98,48 +107,77 @@ class TCPTransmitter
 end
 
 class UDPTransmitter
-	def initialize delegate
-		@sockets = {}
-		@commands_queue = Queue.new
-		@messages_queue = Queue.new
+	def initialize
+		@sockets = []
+		@connections = {}
+		@has_command = Queue.new
+		@has_message = Queue.new
+		@command_addr_queue = []
+		@message_addr_queue = []
+		@commands_queues = {}
+		@messages_queues = {}
+		@threads = []
+		@messages = {}
 	end
-	
-	def listen_to_port port, limit = nil
-		@socket = UDPSocket.new
-		@socket.bind nil, port
-		messages = {}
-		loop do
-			addr = nil
-			loop do
-				char, sender = @socket.recvfrom(1)
-				addr = Address.new(sender[3], sender[1])
-				messages[addr.key] = "" if messages[addr.key].nil?
-				messages[addr.key] += char
-				break if char == "\n"
-			end
-			@delegate.received_line messages[addr.key], addr
-			messages[addr.key] = ""
-		end
+
+	def open_port port
+		s = UDPSocket.new
+		@sockets << s
+		s.bind nil, port
+		addr = Address.new(nil, port)
+		@connections[addr] = s
+		listen_to_socket addr
 	end
 	
 	def connect_to addr
 		s = UDPSocket.new
-		s.connect addr.host, addr.port
-		@sockets[addr.key] = s
+		@sockets << s
+		@connections[addr.key] = s
+		listen_to_socket addr
+	end
+	
+	def listen_to_socket sock_addr
+		@threads.push(Thread.start(sock_addr) do |sock_addr|
+			s = @connections[sock_addr]
+			loop do
+				msg, addr = read_line s
+				if msg[0].to_i > 0
+					@messages_queues[addr.key] << msg
+					@message_addr_queue << addr
+					@has_message << 0
+				else
+					@commands_queues[addr.key] << msg
+					@command_addr_queue << addr
+					@has_command << 0
+				end
+			end
+		end)
+	end
+
+	def read_line s
+		addr = nil
+		loop do
+			char, sender = s.recvfrom(1)
+			addr = Address.new(sender[3], sender[1])
+			@connections[addr.key] = s if @connections[addr.key].nil?
+			@messages[addr.key] = "" if @messages[addr.key].nil?
+			@messages[addr.key] += char
+			break if char == "\n"
+		end
+		msg = @messages[addr.key]
+		@messages[addr.key] = ""
+		[msg, addr]
 	end
 	
 	def close_connection addr
-		
-	end
-
-	def answer msg, addr
-		@socket.send msg, 0, addr.host, addr.port
+		@connections.delete addr.key
 	end
 	
 	def send msg, addr
 		begin
+			s = @connections[addr.key]
 			msg.chars.each do |c|
-				@sockets[addr.key].print c
+				s.send c, 0, addr.host, addr.port
 			end
 		rescue
 			puts "The server has closed the connection!"
@@ -147,11 +185,25 @@ class UDPTransmitter
 		end
 	end
 	
-	def receive_line addr
-		@sockets[addr.key].readline
+	def receive type = :command, addr = nil
+		msg = nil
+		queues = type == :command ? @commands_queues : @messages_queues
+		addrs = type == :command ? @command_addr_queue : @message_addr_queue
+		has = type == :command ? @has_command : @has_message
+		if addr
+			msg = queues[addr.key].pop
+			has.pop
+			addrs.delete_at(addrs.index(addr) || addrs.length)
+		else
+			has.pop
+			addr = addrs.shift
+			msg = queues[addr.key].pop
+		end
+		[msg, addr]
 	end
 	
 	def close
-		
+		@threads.each { |t| t.kill }
+		@sockets.each_value { |c| c.close }
 	end
 end

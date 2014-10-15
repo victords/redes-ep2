@@ -11,7 +11,7 @@ class Server
 	def start
 		@transmitter.open_port @port
 		loop do
-			msg, addr = @transmitter.receive_command
+			msg, addr = @transmitter.receive
 			puts "Mensagem recebida: #{msg} #{addr}"
 			msg = msg.chomp
 			cmd = msg.split[0].downcase

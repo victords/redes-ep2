@@ -10,18 +10,18 @@ end
 port = ARGV.shift.to_i
 
 # if fork
-# 	begin
-# 		udp_server = Server.new port, UDPTransmitter
-# 		udp_server.start
-# 	rescue Interrupt
-# 		udp_server.close
-# 	end
-# else
 	begin
-		tcp_server = Server.new port, TCPTransmitter
-		tcp_server.start
+		udp_server = Server.new port, UDPTransmitter
+		udp_server.start
 	rescue Interrupt
-		tcp_server.close
+		udp_server.close
 	end
+# else
+	# begin
+	# 	tcp_server = Server.new port, TCPTransmitter
+	# 	tcp_server.start
+	# rescue Interrupt
+	# 	tcp_server.close
+	# end
 # end
 
