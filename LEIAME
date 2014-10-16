@@ -21,12 +21,19 @@ list        -> Listar usuários logados no mesmo modo (TCP ou UDP)
                   ...
                -> 400 Erro genérico
                -> 402 Usuário não logado (deve ser evitado pelo client)
-talkto USER -> Tenta iniciar conversa com USER
+(client to server)
+talkto USER PORT -> Tenta iniciar conversa com USER aguardando na porta PORT
                -> 200 a.b.c.d:p OK, conectar no host a.b.c.d, porta p
                -> 400 Erro genérico
                -> 402 Usuário não logado (deve ser evitado pelo client)
                -> 404 Usuário USER não encontrado
+               -> 405 Conversa recusada (usuário ocupado)
                -> 501 Erro de sintaxe: USER vazio (deve ser evitado pelo client) ou com caracteres inválidos
+(server to client)
+talkto USER PORT -> Indica que o usuário USER quer iniciar uma conversa com este client e está aguardando na porta PORT
+               -> 200 p OK, conectar na porta p
+               -> 400 Erro genérico
+               -> 405 Conversa recusada (usuário ocupado)
 shutup      -> Finaliza conversa com usuário atual
                -> 200 OK
                -> 400 Erro genérico

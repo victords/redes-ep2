@@ -37,6 +37,8 @@ private
 			process_heartbeat addr
 		when "list"
 			process_list addr
+		when "talkto"
+			process_talkto args, addr
 		else
 			error 501, "command not recognized.", addr
 		end
@@ -76,6 +78,35 @@ private
 			s += "#{i+1}. #{u.name} (since #{u.login_time});"
 		end
 		answer 200, s, addr
+	end
+
+	def process_talkto args, addr
+		user_a = Users[addr.key]
+		if user_a.nil?
+			error 402, "you are not logged in!", addr
+      return
+    end
+
+    user_b_name, user_a_port = args.split
+
+		if user_b_name.nil?
+			error 501, "you must provide a user name.", addr
+      return
+		end
+
+		user_b = Users[user_b_name]
+		if user_b.nil?
+			error 404, "user not found.", addr
+      return
+    end
+
+		@transmitter.send "talkto #{user_a.name} #{user_a_port}", user_b.addr
+		msg, user_b_addr = @transmitter.receive :message, user_b.addr
+    msg = msg.chomp
+    code = msg.split[0].downcase
+    arg = msg[(msg.index(' ')+1)..-1] if msg.index(' ')
+    arg = "#{user_b.addr.host}:#{arg}" if code == "200"
+    answer code, arg, user_b.addr
 	end
 	
 	def answer code, msg, addr

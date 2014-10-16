@@ -32,7 +32,6 @@ class TCPTransmitter
 	
 	def open_port port
 		server = TCPServer.open(port)
-		count = 0
 		t = Thread.start(server) do |server|
 			loop do
 				s = server.accept
@@ -42,6 +41,7 @@ class TCPTransmitter
 			end
 		end
 		@threads << t
+    server.addr[1]
 	end
 	
 	def connect_to addr
