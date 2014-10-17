@@ -101,7 +101,7 @@ private
       return
     end
 
-		@transmitter.send "talkto #{addr.host} #{user_a_port}\n", user_b.addr
+		@transmitter.send "talkto #{user_a.name} #{addr.host} #{user_a_port}\n", user_b.addr
 		msg, user_b_addr = @transmitter.receive :message, user_b.addr
     msg = msg.chomp
     code = msg.split[0].downcase

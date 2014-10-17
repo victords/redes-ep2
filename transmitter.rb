@@ -45,9 +45,10 @@ class TCPTransmitter
     server.addr[1]
 	end
 
-	def connect_to addr, local_port = nil
-    @connections[addr.key] = TCPSocket.new addr.host, addr.port, "localhost", local_port
+	def connect_to addr
+    @connections[addr.key] = TCPSocket.new addr.host, addr.port
 		listen_to_socket addr
+    @connections[addr.key].addr[1]
   end
 
 	def listen_to_socket addr
@@ -57,14 +58,12 @@ class TCPTransmitter
 			conn = @connections[addr.key]
 			until conn.closed?
         msg = conn.readline
-        # puts "mensagem recebida de #{addr.key}: #{msg}"
 				if msg[0].to_i > 0
 					@messages_queues[addr.key] << msg
 					@message_addr_queue << addr
 					@has_message << 0
 				else
 					@commands_queues[addr.key] << msg
-          puts "#{addr.key}: #{@commands_queues[addr.key].size}"
 					@command_addr_queue << addr
 					@has_command << 0
 				end
@@ -93,9 +92,7 @@ class TCPTransmitter
 		addrs = type == :command ? @command_addr_queue : @message_addr_queue
 		has = type == :command ? @has_command : @has_message
 		if addr
-      puts "pop #{addr.key}..."
       msg = queues[addr.key].pop
-      puts "foi #{addr.key}"
 			has.pop
 			addrs.delete_at(addrs.index(addr) || addrs.length)
 		else
@@ -133,6 +130,7 @@ class UDPTransmitter
 		addr = Address.new(nil, port)
 		@connections[addr.key] = s
 		listen_to_socket addr
+    s.addr[1]
 	end
 
 	def connect_to addr
@@ -142,6 +140,7 @@ class UDPTransmitter
 		@connections[addr.key] = s
 		init_queues_if_nil addr
 		listen_to_socket addr
+    s.addr[1]
 	end
 
 	def listen_to_socket sock_addr

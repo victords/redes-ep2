@@ -18,7 +18,7 @@ class Client
       if @state == :logged
         cmd = s.split[0]
         if cmd == "talkto"
-          port = 60000 # ver como obter porta vaga
+          port = @transmitter.open_port 0
           ans = communicate_with_server("#{s.chomp} #{port}\n")
           code = ans.to_i
           msg = ans[(ans.index(' ')+1)..-1]
@@ -26,10 +26,10 @@ class Client
             addr = msg.split ':'
             @peer_addr = Address.new addr[0], addr[1].to_i
             # puts "peer_addr: #{@peer_addr.key}"
-            @transmitter.connect_to @peer_addr, port
-            @transmitter.send "init\n", @peer_addr
+            # @transmitter.send "init\n", @peer_addr
             @state = :talking
             puts "iniciei conversa"
+            listen_to_peer
           end
         else
           ans = communicate_with_server(s)
@@ -77,18 +77,30 @@ class Client
           if @state == :talking
             @transmitter.send "405 I'm busy!\n", @server_addr
           else
-            port = @transmitter.open_port 0
-            p_addr = Address.new args.split[0], args.split[1].to_i
+            info = args.split
+            p_addr = Address.new info[1], info[2].to_i
+            port = @transmitter.connect_to p_addr
             # puts "port: #{port}, p_addr: #{p_addr.key}"
             @transmitter.send "200 #{port}\n", @server_addr
-            msg1, addr1 = @transmitter.receive :command, p_addr
-            puts "msg1: #{msg1}"
-            if msg1.chomp == "init"
-              @peer_addr = p_addr
-              @state = :talking
-              puts "iniciei conversa"
-            end
+            @transmitter.send "init\n", p_addr
+            @peer_addr = p_addr
+            @state = :talking
+            puts "iniciei conversa"
+            listen_to_peer
           end
+        end
+      end
+    end
+  end
+
+  def listen_to_peer
+    Thread.new do
+      loop do
+        msg, addr =  @transmitter.receive :command, @peer_addr
+        cmd = msg.split[0]
+        args = msg[(msg.index(' ')+1)..-1] if msg.index(' ')
+        if cmd == "msg"
+          puts args
         end
       end
     end
