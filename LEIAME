@@ -27,7 +27,7 @@ talkto USER PORT -> Tenta iniciar conversa com USER aguardando na porta PORT
                -> 400 Erro genérico
                -> 402 Usuário não logado (deve ser evitado pelo client)
                -> 404 Usuário USER não encontrado
-               -> 405 Conversa recusada (usuário ocupado)
+               -> 405 Conversa recusada
                -> 406 Tentativa de conversa consigo mesmo.
                -> 501 Erro de sintaxe: USER vazio (deve ser evitado pelo client) ou com caracteres inválidos
 (server to client)

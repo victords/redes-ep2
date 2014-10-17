@@ -31,7 +31,7 @@ class Client
             listen_to_peer
           else
             @transmitter.close_connection Address.new(nil, 0)
-            puts "#{user} está ocupado"
+            puts "#{msg}"
           end
         else
           ans = communicate_with_server(s)
@@ -46,7 +46,7 @@ class Client
           end
         end
       elsif @state == :talking
-        @transmitter.send "msg #{s}", @peer_addr
+        process_talk s
       end
 		end
 	end
@@ -61,6 +61,7 @@ class Client
 			puts msg
 			if code == 201
 				@state = :logged
+        @user_name = s.chomp
 				start_heartbeat
 			end
 		end
@@ -73,7 +74,7 @@ class Client
         cmd, args = get_args msg
         if cmd == "talkto"
           if @state == :talking
-            @transmitter.send "405 I'm busy!\n", @server_addr
+            @transmitter.send "405 #{@user_name} is busy!\n", @server_addr
           else
             info = args.split
             p_addr = Address.new info[1], info[2].to_i
@@ -84,7 +85,7 @@ class Client
             @peer_addr = p_addr
             @peer_name = info[0]
             @state = :talking
-            puts "iniciei conversa"
+            puts "[Started talking to #{@peer_name}]"
             listen_to_peer
           end
         end
@@ -93,17 +94,38 @@ class Client
   end
 
   def listen_to_peer
-    Thread.new do
+    @talk_thread = Thread.new do
       loop do
         msg, addr =  @transmitter.receive :command, @peer_addr
         cmd, args = get_args msg
         if cmd == "msg"
-          puts args
+          puts "- #{@peer_name}: #{args}"
         elsif cmd == "init"
-          puts "Iniciada conversa com #{@peer_name}"
+          puts "[Started talking to #{@peer_name}]"
+        elsif cmd == "shutup"
+          shutup
         end
       end
     end
+  end
+
+  def process_talk s
+    if s.index("/") == 0
+      cmd = s.split[0]
+      if cmd == "/shutup"
+        @transmitter.send "shutup\n", @peer_addr
+        shutup
+      end
+    else
+      @transmitter.send "msg #{s}", @peer_addr
+    end
+  end
+
+  def shutup
+    @transmitter.close_connection @peer_addr
+    @state = :logged
+    puts "[Ended conversation with #{@peer_name}]"
+    @talk_thread.kill
   end
 
 	def start_heartbeat
@@ -111,7 +133,7 @@ class Client
 			loop do
 				ans = communicate_with_server "htbeat\n"
 				if ans.split[0].to_i != 200
-					puts "deu merda!"
+					puts "Shit happened!"
 				end
 				sleep 10
 			end
