@@ -7,7 +7,7 @@ class Server
 		@transmitter = transmitter_class.new
 		@type = transmitter_class.to_s[0..2]
 	end
-	
+
 	def start
 		@transmitter.open_port @port
 		loop do
@@ -18,13 +18,13 @@ class Server
 			process_command cmd, args, addr
 		end
 	end
-	
+
 	def close
 		puts "\nClosing #{@type} server..."
 		@transmitter.close
 		puts "See ya!"
 	end
-	
+
 private
 
 	def process_command cmd, args, addr
@@ -43,7 +43,7 @@ private
 			error 501, "command not recognized.", addr
 		end
 	end
-	
+
 	def process_login user_name, addr
 		if user_name.nil?
 			# client deve impedir que isso ocorra
@@ -55,7 +55,7 @@ private
 			answer 201, "Welcome, #{user_name}!", addr
 		end
 	end
-	
+
 	def process_logout addr
 		if Users[addr.key]
 			Users.logout addr
@@ -66,10 +66,11 @@ private
 			error 402, "user not logged in!", addr
 		end
 	end
-	
+
 	def process_heartbeat addr
 		Users[addr.key].heartbeat
 		answer 200, "OK", addr
+    # puts "htbeat"
 	end
 
 	def process_list addr
@@ -100,19 +101,19 @@ private
       return
     end
 
-		@transmitter.send "talkto #{user_a.name} #{user_a_port}", user_b.addr
+		@transmitter.send "talkto #{addr.host} #{user_a_port}\n", user_b.addr
 		msg, user_b_addr = @transmitter.receive :message, user_b.addr
     msg = msg.chomp
     code = msg.split[0].downcase
     arg = msg[(msg.index(' ')+1)..-1] if msg.index(' ')
-    arg = "#{user_b.addr.host}:#{arg}" if code == "200"
-    answer code, arg, user_b.addr
+    arg = "#{user_b_addr.host}:#{arg}" if code.to_i == 200
+    answer code, arg, addr
 	end
-	
+
 	def answer code, msg, addr
 		@transmitter.send "#{code} #{msg}\n", addr
 	end
-	
+
 	def error code, msg, addr
 		@transmitter.send "#{code} Error: #{msg}\n", addr
 	end
