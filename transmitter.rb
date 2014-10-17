@@ -1,22 +1,5 @@
 require 'socket'
-
-class Address
-	attr_reader :host, :port
-
-	def initialize host, port
-		host = "localhost" if host == "127.0.0.1"
-		@host = host
-		@port = port
-	end
-
-	def key
-		"#{@host}|#{@port}"
-	end
-
-	def == other
-		@host == other.host and @port == other.port
-	end
-end
+require_relative 'utils'
 
 class TCPTransmitter
 	def initialize
@@ -32,9 +15,11 @@ class TCPTransmitter
 
 	def open_port port
 		server = TCPServer.open(port)
+    @connections["|0"] = server
 		t = Thread.start(server) do |server|
 			loop do
 				s = server.accept
+
 				addr = Address.new(s.peeraddr[3], s.peeraddr[1])
         # puts "conexao aceita com #{addr.key}"
 				@connections[addr.key] = s

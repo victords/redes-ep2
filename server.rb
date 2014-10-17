@@ -1,5 +1,7 @@
 require_relative 'user'
 require_relative 'transmitter'
+require_relative 'utils'
+include Utils
 
 class Server
 	def initialize port, transmitter_class
@@ -12,9 +14,7 @@ class Server
 		@transmitter.open_port @port
 		loop do
 			msg, addr = @transmitter.receive
-			msg = msg.chomp
-			cmd = msg.split[0].downcase
-			args = msg[(msg.index(' ')+1)..-1] if msg.index(' ')
+			cmd, args = get_args msg
 			process_command cmd, args, addr
 		end
 	end
@@ -93,7 +93,12 @@ private
 		if user_b_name.nil?
 			error 501, "you must provide a user name.", addr
       return
-		end
+    end
+
+    if user_a.name == user_b_name
+      error 406, "you cant start a conversation with yourself!", addr
+      return
+    end
 
 		user_b = Users[user_b_name]
 		if user_b.nil?
@@ -103,10 +108,8 @@ private
 
 		@transmitter.send "talkto #{user_a.name} #{addr.host} #{user_a_port}\n", user_b.addr
 		msg, user_b_addr = @transmitter.receive :message, user_b.addr
-    msg = msg.chomp
-    code = msg.split[0].downcase
-    arg = msg[(msg.index(' ')+1)..-1] if msg.index(' ')
-    arg = "#{user_b_addr.host}:#{arg}" if code.to_i == 200
+    code, arg = get_args msg
+    arg = "#{user_b_addr.host}:#{arg}" if code == 200
     answer code, arg, addr
 	end
 

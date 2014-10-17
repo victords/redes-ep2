@@ -1,4 +1,6 @@
 require_relative 'transmitter'
+require_relative 'utils'
+include Utils
 
 class Client
 	def initialize host, port, transmitter_class
@@ -16,27 +18,26 @@ class Client
 			s = gets
 			next if s == "\n"
       if @state == :logged
-        cmd = s.split[0]
+        cmd, user = get_args s
         if cmd == "talkto"
           port = @transmitter.open_port 0
           ans = communicate_with_server("#{s.chomp} #{port}\n")
-          code = ans.to_i
-          msg = ans[(ans.index(' ')+1)..-1]
+          code, msg = get_args ans
           if code == 200
             addr = msg.split ':'
             @peer_addr = Address.new addr[0], addr[1].to_i
-            # puts "peer_addr: #{@peer_addr.key}"
-            # @transmitter.send "init\n", @peer_addr
+            @peer_name = user
             @state = :talking
-            puts "iniciei conversa"
             listen_to_peer
+          else
+            @transmitter.close_connection Address.new(nil, 0)
+            puts "#{user} está ocupado"
           end
         else
           ans = communicate_with_server(s)
-          code = ans.to_i
-          msg = ans[(ans.index(' ')+1)..-1]
+          code, msg = get_args ans
           if code == 202
-            puts ans[(ans.index(' ')+1)..-1]
+            puts msg
             exit
           elsif code >= 400
             puts msg
@@ -56,8 +57,7 @@ class Client
 			s = gets
 			next if s == "\n"
 			ans = communicate_with_server("login #{s}")
-			code = ans.split[0].to_i
-			msg = ans[(ans.index(' ')+1)..-1]
+      code, msg = get_args ans
 			puts msg
 			if code == 201
 				@state = :logged
@@ -70,9 +70,7 @@ class Client
     Thread.new do
       loop do
         msg, addr = @transmitter.receive :command, @server_addr
-        msg = msg.chomp
-        cmd = msg.split[0].downcase
-        args = msg[(msg.index(' ')+1)..-1] if msg.index(' ')
+        cmd, args = get_args msg
         if cmd == "talkto"
           if @state == :talking
             @transmitter.send "405 I'm busy!\n", @server_addr
@@ -84,6 +82,7 @@ class Client
             @transmitter.send "200 #{port}\n", @server_addr
             @transmitter.send "init\n", p_addr
             @peer_addr = p_addr
+            @peer_name = info[0]
             @state = :talking
             puts "iniciei conversa"
             listen_to_peer
@@ -97,10 +96,11 @@ class Client
     Thread.new do
       loop do
         msg, addr =  @transmitter.receive :command, @peer_addr
-        cmd = msg.split[0]
-        args = msg[(msg.index(' ')+1)..-1] if msg.index(' ')
+        cmd, args = get_args msg
         if cmd == "msg"
           puts args
+        elsif cmd == "init"
+          puts "Iniciada conversa com #{@peer_name}"
         end
       end
     end
