@@ -20,9 +20,7 @@ class TCPTransmitter
 		t = Thread.start(server) do |server|
 			loop do
 				s = server.accept
-
 				addr = Address.new(s.peeraddr[3], s.peeraddr[1])
-        # puts "conexao aceita com #{addr.key}"
 				@connections[addr.key] = s
 				listen_to_socket addr
 			end
@@ -90,7 +88,6 @@ class TCPTransmitter
     Thread.start(server) do |server|
       s = server.accept
       addr = Address.new(s.peeraddr[3], s.peeraddr[1])
-      # puts "conexao aceita com #{addr.key}"
       @connections[addr.key] = s
       listen_to_file_socket addr, size
     end
@@ -193,10 +190,10 @@ class UDPTransmitter
 	end
 
 	def send msg, addr
-		begin
+    begin
 			s = @connections[addr.key]
 			msg.chars.each do |c|
-				s.send c, 0, addr.host, addr.port
+        s.send c, 0, addr.host, addr.port
 			end
 		rescue Exception => e
 			puts e.message
@@ -244,24 +241,42 @@ class UDPTransmitter
     conn = @connections[addr.key]
     bytes = ''
     recvd_bytes = 0
+    p_addr = nil
     until recvd_bytes == size
-      block, sender = conn.recvfrom(4096)
-      bytes << block
-      recvd_bytes += block.bytesize
-      puts recvd_bytes
+      block, sender = conn.recvfrom(4100)
+      if p_addr.nil?
+        p_addr = Address.new(sender[3], sender[1])
+        @connections[p_addr.key] = conn
+      end
+      s = block.bytes[0..3]
+      seq = (s[0] << 24) | (s[1] << 16) | (s[2] << 8) | s[3]
+      content = block.bytes[4..-1]
+      bytes << content.pack('c*')
+      recvd_bytes += content.length
+      send "#{seq}\n", p_addr
     end
     @file_queue << bytes
-    puts "empilhou"
     conn.close
     close_connection addr
   end
 
   def send_file file_path, addr
-    f = File.open(file_path, 'rb')
+    listen_to_socket addr
     conn = @connections[addr.key]
+    f = File.open(file_path, 'rb')
+    seq = 1
     until f.eof?
+      # puts "seq #{seq}"
       block = f.read 4096
-      conn.send block, 0, addr.host, addr.port
+      s = [(seq >> 24) & 0xff, (seq >> 16) & 0xff, (seq >> 8) & 0xff, seq & 0xff]
+      block = s.concat(block.bytes).pack('c*')
+      loop do
+        conn.send block, 0, addr.host, addr.port
+        msg, sender = receive :message, addr
+        # puts "rec #{msg}"
+        break if msg.to_i == seq
+      end
+      seq += 1
     end
     conn.close
     close_connection addr
