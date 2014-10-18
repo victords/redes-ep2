@@ -148,6 +148,7 @@ class UDPTransmitter
 		@message_addr_queue = []
 		@commands_queues = {}
 		@messages_queues = {}
+    @file_queue = Queue.new
 		@threads = []
 		@messages = {}
 	end
@@ -191,25 +192,6 @@ class UDPTransmitter
 		end)
 	end
 
-	def read_line s
-		addr = nil
-		loop do
-			char, sender = s.recvfrom(1)
-			addr = Address.new(sender[3], sender[1])
-			@connections[addr.key] = s if @connections[addr.key].nil?
-			@messages[addr.key] = "" if @messages[addr.key].nil?
-			@messages[addr.key] += char
-			break if char == "\n"
-		end
-		msg = @messages[addr.key]
-		@messages[addr.key] = ""
-		[msg, addr]
-	end
-
-	def close_connection addr
-		@connections.delete addr.key
-	end
-
 	def send msg, addr
 		begin
 			s = @connections[addr.key]
@@ -241,10 +223,79 @@ class UDPTransmitter
 		[msg, addr]
 	end
 
+  def open_file_port size
+    s = UDPSocket.new
+    s.bind nil, 0
+    Thread.new do
+      addr = Address.new(nil, s.addr[1])
+      @connections[addr.key] = s
+      listen_to_file_socket addr, size
+    end
+    s.addr[1]
+  end
+
+  def connect_to_file addr
+    s = UDPSocket.new
+    s.bind nil, 0
+    @connections[addr.key] = s
+  end
+
+  def listen_to_file_socket addr, size
+    conn = @connections[addr.key]
+    bytes = ''
+    recvd_bytes = 0
+    until recvd_bytes == size
+      block, sender = conn.recvfrom(4096)
+      bytes << block
+      recvd_bytes += block.bytesize
+      puts recvd_bytes
+    end
+    @file_queue << bytes
+    puts "empilhou"
+    conn.close
+    close_connection addr
+  end
+
+  def send_file file_path, addr
+    f = File.open(file_path, 'rb')
+    conn = @connections[addr.key]
+    until f.eof?
+      block = f.read 4096
+      conn.send block, 0, addr.host, addr.port
+    end
+    conn.close
+    close_connection addr
+  end
+
+  def receive_file
+    @file_queue.pop
+  end
+
+  def close_connection addr
+    @connections.delete addr.key
+  end
+
 	def close
 		@threads.each { |t| t.kill }
 		@sockets.each { |c| c.close }
 	end
+
+private
+
+  def read_line s
+    addr = nil
+    loop do
+      char, sender = s.recvfrom(1)
+      addr = Address.new(sender[3], sender[1])
+      @connections[addr.key] = s if @connections[addr.key].nil?
+      @messages[addr.key] = "" if @messages[addr.key].nil?
+      @messages[addr.key] += char
+      break if char == "\n"
+    end
+    msg = @messages[addr.key]
+    @messages[addr.key] = ""
+    [msg, addr]
+  end
 
 	def init_queues_if_nil addr
 		@commands_queues[addr.key] = Queue.new if @commands_queues[addr.key].nil?

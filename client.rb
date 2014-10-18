@@ -113,7 +113,7 @@ class Client
           @transmitter.send "200 #{port}\n", @peer_addr
           Thread.new do
             file = @transmitter.receive_file
-            f = File.open(file_name, 'w')
+            f = File.open(file_name, 'wb')
             f.write(file)
             f.close
             puts "[File '#{file_name}' successfully received]"
