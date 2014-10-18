@@ -1,4 +1,18 @@
-### RSCP - Ridiculously simple chat protocol ###
+####################################################
+# MAC0448 - Programação para Redes de Computadores #
+# EP2 - Protocolo de bate-papo TCP/UDP  19/10/2014 #
+#                                                  #
+# Pedro Alves de Medeiros Scocco    Nº USP 7558183 #
+# Victor David Santos               Nº USP 7152628 #
+####################################################
+
+1) Observações gerais
+
+Abaixo segue uma descrição esquemática do protocolo idealizado.
+Nem todos os códigos de retorno abaixo listados foram devidamente respeitados na
+implementação, principalmente devido à restrição do prazo.
+
+################# RSCP - Ridiculously simple chat protocol #####################
 
 login USER            -> Tenta fazer o login do usuário com nome USER
                          -> 201 Login efetuado
@@ -45,7 +59,7 @@ msg MSG               -> Envia a mensagem MSG para o usuário com o qual se est�
                          -> 402 Usuário não logado (deve ser evitado pelo client)
                          -> 403 Não conectado a nenhum usuário (deve ser evitado pelo client)
                          -> 501 Erro de sintaxe: MSG vazio (deve ser evitado pelo client)
-file NAME SIZE        -> Prepara o usuário conectado para receber o arquivo NAME, de tamanho SIZE bytes
+file PATH SIZE        -> Prepara o usuário conectado para receber o arquivo encontrado em PATH, de tamanho SIZE bytes
                          -> 203 p aguardando envio na porta p
                             ... envia arquivo ...
                             -> 200 OK
@@ -57,3 +71,59 @@ file NAME SIZE        -> Prepara o usuário conectado para receber o arquivo NAM
 
 * Comando desconhecido (deve ser evitado pelo client)
   -> 500 Comando não reconhecido
+  
+################################################################################
+
+2) Modo de uso
+
+Ao iniciar o programa client, é solicitado inicialmente um nome de usuário (o
+programa implicitamente envia para o servidor o comando 'login' com o nome
+digitado como parâmetro).
+Após a entrada com um nome de usuário válido, entra-se num modo interativo, em
+que o servidor indica que está aguardando comandos através do prompt "=>".
+
+Neste estado, os comandos possíveis são:
+
+ - list
+ - talkto USER
+ - logout
+
+Ao enviar o comando 'talkto' com um nome de usuário válido como parâmetro,
+entra-se num outro estado, onde outros comandos são aceitos. Porém, neste
+estado, as linhas digitadas pelo usuário são consideradas por padrão como
+mensagens a serem enviadas para o outro usuário (o programa implicitamente envia
+para o outro cliente o comando 'msg' com a linha digitada como parâmetro).
+Para indicar um comando diferente do 'msg', deve-se iniciar a linha com '/'.
+Os comandos neste caso são:
+
+ - /file PATH
+ - /shutup
+
+As respostas do servidor, neste estado, são indicadas entre colchetes; As
+mensagens recebidas do outro usuário são indicadas no formato:
+
+- USER: mensagem mensagem mensagem...
+
+Ao enviar o comando '/shutup', retorna-se ao estado interativo inicial ("=>").
+
+3) Execução
+
+O EP foi desenvolvido em linguagem Ruby, que é interpretada, logo não é
+necessária compilação.
+
+Para iniciar o servidor, basta executar, no diretório dos códigos-fonte:
+
+ ruby init_client.rb PORT
+
+Onde PORT é a porta que se deseja abrir para conexões do clients.
+
+Para conectar um client, execute, no mesmo diretório:
+
+ ruby init_client.rb HOST PORT MODE
+
+Onde HOST é o endereço do servidor (para iniciar um client na mesma máquina que
+o servidor, por exemplo, pode-se especificar "localhost"), PORT é a porta do
+servidor que está aberta para conexões, e MODE deve ser "tcp" ou "udp" (sem as
+aspas), indicando o protocolo da camada de transporte que será usado para a
+conexão.
+
