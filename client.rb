@@ -104,6 +104,22 @@ class Client
           puts "[Started talking to #{@peer_name}]"
         elsif cmd == "shutup"
           shutup
+        elsif cmd == "file"
+          file_name = args.split[0]
+          file_size = args.split[1].to_i
+          port = @transmitter.open_file_port file_size
+          @transmitter.send "200 #{port}\n", @peer_addr
+          Thread.new do
+            puts "recebendo..."
+            file = @transmitter.receive_file
+            puts "recebido"
+            f = File.open(file_name, 'w')
+            puts "aberto"
+            f.write(file)
+            puts "escrito"
+            f.close
+            puts "arquivo salvo"
+          end
         end
       end
     end
@@ -111,10 +127,22 @@ class Client
 
   def process_talk s
     if s.index("/") == 0
-      cmd = s.split[0]
+      cmd, args = get_args s
       if cmd == "/shutup"
         @transmitter.send "shutup\n", @peer_addr
         shutup
+      elsif cmd == "/file"
+        @transmitter.send "file #{File.basename(args)} #{File.size(args)}\n", @peer_addr
+        msg, addr = @transmitter.receive :message, @peer_addr
+        code, text = get_args msg
+        if code == 200
+          Thread.new do
+            addr = Address.new @peer_addr.host, text.to_i
+            @transmitter.connect_to_file addr
+            @transmitter.send_file args, addr
+            puts "arquivo enviado"
+          end
+        end
       end
     else
       @transmitter.send "msg #{s}", @peer_addr

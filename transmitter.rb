@@ -10,6 +10,7 @@ class TCPTransmitter
 		@message_addr_queue = []
 		@commands_queues = {}
 		@messages_queues = {}
+    @file_queue = Queue.new
 		@threads = []
 	end
 
@@ -57,11 +58,6 @@ class TCPTransmitter
 		end)
 	end
 
-	def close_connection addr
-		@connections[addr.key].close
-		@connections.delete addr.key
-	end
-
 	def send msg, addr
 		begin
 			@connections[addr.key].print msg
@@ -87,6 +83,54 @@ class TCPTransmitter
 		end
 		[msg, addr]
 	end
+
+  def open_file_port size
+    server = TCPServer.open(0)
+    @connections["file"] = server
+    Thread.start(server) do |server|
+      s = server.accept
+      addr = Address.new(s.peeraddr[3], s.peeraddr[1])
+      # puts "conexao aceita com #{addr.key}"
+      @connections[addr.key] = s
+      listen_to_file_socket addr, size
+    end
+    server.addr[1]
+  end
+
+  def connect_to_file addr
+    @connections[addr.key] = TCPSocket.new addr.host, addr.port
+  end
+
+  def listen_to_file_socket addr, size
+    conn = @connections[addr.key]
+    bytes = ''
+    until bytes.length == size
+      block, sender = conn.recvfrom(4096)
+      bytes << block
+    end
+    @file_queue << bytes
+    close_connection addr
+    @connections["file"].close
+    @connections.delete "file"
+  end
+
+  def send_file file_path, addr
+    f = File.open(file_path, 'r')
+    conn = @connections[addr.key]
+    until f.eof?
+      block = f.read 4096
+      conn.write block
+    end
+  end
+
+  def receive_file
+    @file_queue.pop
+  end
+
+  def close_connection addr
+    @connections[addr.key].close
+    @connections.delete addr.key
+  end
 
 	def close
 		@threads.each { |t| t.kill }
