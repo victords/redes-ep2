@@ -26,5 +26,5 @@ module Utils
 end
 
 module Constants
-  BLOCK_SIZE = 4096
+  BLOCK_SIZE = 1500
 end

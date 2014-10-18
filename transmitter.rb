@@ -104,7 +104,7 @@ class TCPTransmitter
     conn = @connections[addr.key]
     bytes = ''
     until bytes.length == size
-      block, sender = conn.recvfrom(4096)
+      block, sender = conn.recvfrom(BLOCK_SIZE)
       bytes << block
     end
     @file_queue << bytes
@@ -117,7 +117,7 @@ class TCPTransmitter
     f = File.open(file_path, 'r')
     conn = @connections[addr.key]
     until f.eof?
-      block = f.read 4096
+      block = f.read BLOCK_SIZE
       conn.write block
     end
   end
@@ -254,7 +254,7 @@ class UDPTransmitter
       s = block.bytes[0..3]
       seq = (s[0] << 24) | (s[1] << 16) | (s[2] << 8) | s[3]
       next if blocks_to_receive.index(seq) == nil
-      puts "received #{seq}"
+      # puts "received #{seq}"
       content = block.bytes[4..-1]
       bytes[(seq-1)*BLOCK_SIZE...seq*BLOCK_SIZE] = content
       blocks_to_receive.delete seq
@@ -275,8 +275,14 @@ class UDPTransmitter
     t = Thread.new do
     	loop do
     		msg, sender = receive :message, addr
+    		(blocks_to_send.size-1).downto(0) do |i|
+    			if blocks_to_send[i] == msg.to_i
+    				blocks_to_send.delete_at i
+    				break
+    			end
+    		end
     		blocks_to_send.delete msg.to_i
-    		puts "confirmed #{msg}"
+    		# puts "confirmed #{msg}"
     	end
     end
     until blocks_to_send.empty?
@@ -285,8 +291,8 @@ class UDPTransmitter
       s = [(n >> 24) & 0xff, (n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff]
       block = s.concat(block).pack('c*')
       conn.send block, 0, addr.host, addr.port
-      puts "sent #{n}"
-      blocks_to_send.rotate
+      puts "sent #{n}" if n % 1000 == 0
+      blocks_to_send.rotate!
     end
     t.kill
     conn.close
