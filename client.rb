@@ -15,8 +15,8 @@ class Client
     listen_to_server
 
 		loop do
-			s = gets
-			next if s == "\n"
+      s = gets
+      next if s == "\n"
       if @state == :logged
         cmd, user = get_args s
         if cmd == "talkto"
@@ -45,6 +45,7 @@ class Client
             puts msg.split ';'
           end
         end
+        print "=> "
       elsif @state == :talking
         process_talk s
       end
@@ -63,6 +64,7 @@ class Client
 				@state = :logged
         @user_name = s.chomp
 				start_heartbeat
+        print "=> "
 			end
 		end
   end
@@ -110,15 +112,11 @@ class Client
           port = @transmitter.open_file_port file_size
           @transmitter.send "200 #{port}\n", @peer_addr
           Thread.new do
-            puts "recebendo..."
             file = @transmitter.receive_file
-            puts "recebido"
             f = File.open(file_name, 'w')
-            puts "aberto"
             f.write(file)
-            puts "escrito"
             f.close
-            puts "arquivo salvo"
+            puts "[File '#{file_name}' successfully received]"
           end
         end
       end
@@ -132,6 +130,10 @@ class Client
         @transmitter.send "shutup\n", @peer_addr
         shutup
       elsif cmd == "/file"
+        unless File.exist? args
+          puts "[File '#{args}' not found]"
+          return
+        end
         @transmitter.send "file #{File.basename(args)} #{File.size(args)}\n", @peer_addr
         msg, addr = @transmitter.receive :message, @peer_addr
         code, text = get_args msg
@@ -140,9 +142,11 @@ class Client
             addr = Address.new @peer_addr.host, text.to_i
             @transmitter.connect_to_file addr
             @transmitter.send_file args, addr
-            puts "arquivo enviado"
+            puts "[File '#{args}' successfully sent]"
           end
         end
+      else
+        puts "[Command not recognized]"
       end
     else
       @transmitter.send "msg #{s}", @peer_addr
@@ -153,6 +157,7 @@ class Client
     @transmitter.close_connection @peer_addr
     @state = :logged
     puts "[Ended conversation with #{@peer_name}]"
+    print "=> "
     @talk_thread.kill
   end
 
