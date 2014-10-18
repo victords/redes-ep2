@@ -243,7 +243,7 @@ class UDPTransmitter
     recvd_bytes = 0
     p_addr = nil
     until recvd_bytes == size
-      block, sender = conn.recvfrom(4100)
+      block, sender = conn.recvfrom(65504)
       if p_addr.nil?
         p_addr = Address.new(sender[3], sender[1])
         @connections[p_addr.key] = conn
@@ -266,14 +266,12 @@ class UDPTransmitter
     f = File.open(file_path, 'rb')
     seq = 1
     until f.eof?
-      # puts "seq #{seq}"
-      block = f.read 4096
+      block = f.read 65500
       s = [(seq >> 24) & 0xff, (seq >> 16) & 0xff, (seq >> 8) & 0xff, seq & 0xff]
       block = s.concat(block.bytes).pack('c*')
       loop do
         conn.send block, 0, addr.host, addr.port
         msg, sender = receive :message, addr
-        # puts "rec #{msg}"
         break if msg.to_i == seq
       end
       seq += 1

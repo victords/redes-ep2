@@ -79,9 +79,9 @@ class Client
             @transmitter.send "405 #{@user_name} is busy!\n", @server_addr
           else
             info = args.split
+            info[1] = @server_addr.host if info[1] == "localhost"
             p_addr = Address.new info[1], info[2].to_i
             port = @transmitter.connect_to p_addr
-            # puts "port: #{port}, p_addr: #{p_addr.key}"
             @transmitter.send "200 #{port}\n", @server_addr
             @transmitter.send "init\n", p_addr
             @peer_addr = p_addr
