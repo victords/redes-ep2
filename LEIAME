@@ -74,6 +74,13 @@ file PATH SIZE        -> Prepara o usuário conectado para receber o arquivo enc
   
 ################################################################################
 
+Com relação ao protocolo UDP, foi implementado um algoritmo de confiabilidade
+básico, baseado em números de sequência dos pacotes. Ao enviar arquivos, o
+processo que está enviando aguarda uma confirmação contendo o número de cada
+pacote enviado. Se recebe uma confirmação com número diferente do esperado, ele
+reenvia o pacote atual, e repete esta tarefa até que a confirmação contenha o
+número sequencial correto.
+
 2) Modo de uso
 
 Ao iniciar o programa client, é solicitado inicialmente um nome de usuário (o
@@ -126,4 +133,9 @@ o servidor, por exemplo, pode-se especificar "localhost"), PORT é a porta do
 servidor que está aberta para conexões, e MODE deve ser "tcp" ou "udp" (sem as
 aspas), indicando o protocolo da camada de transporte que será usado para a
 conexão.
+
+Observações: O encerramento dos processos cliente com "Ctrl-C" (^C) pode causar
+comportamentos inesperados. Para encerrar um cliente, utilizar o comando
+'logout'; O encerramento do servidor enquanto os clientes estão executando
+também poderá gerar erros.
 
