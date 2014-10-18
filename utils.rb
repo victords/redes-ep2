@@ -24,3 +24,7 @@ module Utils
     [cmd.to_i > 0 ? cmd.to_i : cmd, args]
   end
 end
+
+module Constants
+  BLOCK_SIZE = 4096
+end

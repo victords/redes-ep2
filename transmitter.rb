@@ -1,5 +1,7 @@
 require 'socket'
 require_relative 'utils'
+include Constants
+
 
 class TCPTransmitter
 	def initialize
@@ -240,20 +242,21 @@ class UDPTransmitter
   def listen_to_file_socket addr, size
     conn = @connections[addr.key]
     bytes = []
-    n_blocks = (size / 65500.0).ceil
+    n_blocks = (size / BLOCK_SIZE.to_f).ceil
     blocks_to_receive = *(1..n_blocks)
     p_addr = nil
     until blocks_to_receive.empty?
-      block, sender = conn.recvfrom(65504)
+      block, sender = conn.recvfrom(BLOCK_SIZE+4)
       if p_addr.nil?
         p_addr = Address.new(sender[3], sender[1])
         @connections[p_addr.key] = conn
       end
       s = block.bytes[0..3]
       seq = (s[0] << 24) | (s[1] << 16) | (s[2] << 8) | s[3]
+      next if blocks_to_receive.index(seq) == nil
       puts "received #{seq}"
       content = block.bytes[4..-1]
-      bytes[(seq-1)*65500...seq*65500] = content
+      bytes[(seq-1)*BLOCK_SIZE...seq*BLOCK_SIZE] = content
       blocks_to_receive.delete seq
       send "#{seq}\n", p_addr
     end
@@ -267,7 +270,7 @@ class UDPTransmitter
     conn = @connections[addr.key]
     f = File.open(file_path, 'rb')
     file_bytes = f.read.bytes
-    n_blocks = (f.size / 65500.0).ceil
+    n_blocks = (f.size / BLOCK_SIZE.to_f).ceil
     blocks_to_send = *(1..n_blocks)
     t = Thread.new do
     	loop do
@@ -278,10 +281,9 @@ class UDPTransmitter
     end
     until blocks_to_send.empty?
     	n = blocks_to_send[0]
-      block = file_bytes[(n-1)*65500...n*65500]
+      block = file_bytes[(n-1)*BLOCK_SIZE...n*BLOCK_SIZE]
       s = [(n >> 24) & 0xff, (n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff]
       block = s.concat(block).pack('c*')
-      puts "block #{block.size}"
       conn.send block, 0, addr.host, addr.port
       puts "sent #{n}"
       blocks_to_send.rotate
