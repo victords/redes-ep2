@@ -239,23 +239,25 @@ class UDPTransmitter
 
   def listen_to_file_socket addr, size
     conn = @connections[addr.key]
-    bytes = ''
-    recvd_bytes = 0
+    bytes = []
+    n_blocks = (size / 65500.0).ceil
+    blocks_to_receive = *(1..n_blocks)
     p_addr = nil
-    until recvd_bytes == size
-      block, sender = conn.recvfrom(4100)
+    until blocks_to_receive.empty?
+      block, sender = conn.recvfrom(65504)
       if p_addr.nil?
         p_addr = Address.new(sender[3], sender[1])
         @connections[p_addr.key] = conn
       end
       s = block.bytes[0..3]
       seq = (s[0] << 24) | (s[1] << 16) | (s[2] << 8) | s[3]
+      puts "received #{seq}"
       content = block.bytes[4..-1]
-      bytes << content.pack('c*')
-      recvd_bytes += content.length
+      bytes[(seq-1)*65500...seq*65500] = content
+      blocks_to_receive.delete seq
       send "#{seq}\n", p_addr
     end
-    @file_queue << bytes
+    @file_queue << bytes.pack('c*')
     conn.close
     close_connection addr
   end
@@ -264,20 +266,27 @@ class UDPTransmitter
     listen_to_socket addr
     conn = @connections[addr.key]
     f = File.open(file_path, 'rb')
-    seq = 1
-    until f.eof?
-      # puts "seq #{seq}"
-      block = f.read 4096
-      s = [(seq >> 24) & 0xff, (seq >> 16) & 0xff, (seq >> 8) & 0xff, seq & 0xff]
-      block = s.concat(block.bytes).pack('c*')
-      loop do
-        conn.send block, 0, addr.host, addr.port
-        msg, sender = receive :message, addr
-        # puts "rec #{msg}"
-        break if msg.to_i == seq
-      end
-      seq += 1
+    file_bytes = f.read.bytes
+    n_blocks = (f.size / 65500.0).ceil
+    blocks_to_send = *(1..n_blocks)
+    t = Thread.new do
+    	loop do
+    		msg, sender = receive :message, addr
+    		blocks_to_send.delete msg.to_i
+    		puts "confirmed #{msg}"
+    	end
     end
+    until blocks_to_send.empty?
+    	n = blocks_to_send[0]
+      block = file_bytes[(n-1)*65500...n*65500]
+      s = [(n >> 24) & 0xff, (n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff]
+      block = s.concat(block).pack('c*')
+      puts "block #{block.size}"
+      conn.send block, 0, addr.host, addr.port
+      puts "sent #{n}"
+      blocks_to_send.rotate
+    end
+    t.kill
     conn.close
     close_connection addr
   end
