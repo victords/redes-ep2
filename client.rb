@@ -168,7 +168,7 @@ class Client
 				if ans.split[0].to_i != 200
 					puts "Shit happened!"
 				end
-				sleep 10
+				sleep Constants::HEARTBEAT_INTERVAL
 			end
 		end
 	end

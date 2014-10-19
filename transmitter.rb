@@ -1,5 +1,6 @@
 require 'socket'
 require_relative 'utils'
+include Constants
 
 class TCPTransmitter
 	def initialize
@@ -102,7 +103,7 @@ class TCPTransmitter
     conn = @connections[addr.key]
     bytes = ''
     until bytes.length == size
-      block, sender = conn.recvfrom(4096)
+      block, sender = conn.recvfrom(BLOCK_SIZE)
       bytes << block
     end
     @file_queue << bytes
@@ -115,7 +116,7 @@ class TCPTransmitter
     f = File.open(file_path, 'r')
     conn = @connections[addr.key]
     until f.eof?
-      block = f.read 4096
+      block = f.read BLOCK_SIZE
       conn.write block
     end
   end
@@ -243,7 +244,7 @@ class UDPTransmitter
     recvd_bytes = 0
     p_addr = nil
     until recvd_bytes == size
-      block, sender = conn.recvfrom(65504)
+      block, sender = conn.recvfrom(BLOCK_SIZE + 4)
       if p_addr.nil?
         p_addr = Address.new(sender[3], sender[1])
         @connections[p_addr.key] = conn
@@ -265,8 +266,13 @@ class UDPTransmitter
     conn = @connections[addr.key]
     f = File.open(file_path, 'rb')
     seq = 1
+    # num_blocks = (f.size / BLOCK_SIZE.to_f).ceil
+    # if num_blocks >= 100
+    #   pct = 0
+    #   print "[Sending file... 00%]"
+    # end
     until f.eof?
-      block = f.read 65500
+      block = f.read BLOCK_SIZE
       s = [(seq >> 24) & 0xff, (seq >> 16) & 0xff, (seq >> 8) & 0xff, seq & 0xff]
       block = s.concat(block.bytes).pack('c*')
       loop do
@@ -275,6 +281,11 @@ class UDPTransmitter
         break if msg.to_i == seq
       end
       seq += 1
+      # if num_blocks >= 100
+      #   new_pct = (seq.to_f / num_blocks * 100).round
+      #   printf "\b\b\b\b%02d%%]", new_pct if new_pct != pct
+      #   pct = new_pct
+      # end
     end
     conn.close
     close_connection addr

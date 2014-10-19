@@ -24,3 +24,9 @@ module Utils
     [cmd.to_i > 0 ? cmd.to_i : cmd, args]
   end
 end
+
+module Constants
+  BLOCK_SIZE = 1496
+  HEARTBEAT_INTERVAL = 10
+  HEARTBEAT_TOLERANCE = 12
+end
