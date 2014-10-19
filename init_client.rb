@@ -13,4 +13,10 @@ host = ARGV.shift
 port = ARGV.shift.to_i
 mode = ARGV.shift.downcase
 
-client = Client.new host, port, mode == 'tcp' ? TCPTransmitter : UDPTransmitter
+
+begin
+	client = Client.new host, port, mode == 'tcp' ? TCPTransmitter : UDPTransmitter
+	client.start
+rescue Interrupt
+	client.close
+end

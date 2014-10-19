@@ -9,12 +9,14 @@ class Client
 		@transmitter.connect_to @server_addr
 		@semaphore = Mutex.new
     @state = :not_logged
+	end
 
-		login
+  def start
+    login
 
     listen_to_server
 
-		loop do
+    loop do
       s = gets
       next if s == "\n"
       if @state == :logged
@@ -49,8 +51,8 @@ class Client
       elsif @state == :talking
         process_talk s
       end
-		end
-	end
+    end
+  end
 
 	def login
 		until @state == :logged
@@ -70,7 +72,7 @@ class Client
   end
 
   def listen_to_server
-    Thread.new do
+    @server_thread = Thread.new do
       loop do
         msg, addr = @transmitter.receive :command, @server_addr
         cmd, args = get_args msg
@@ -111,7 +113,7 @@ class Client
           file_size = args.split[1].to_i
           port = @transmitter.open_file_port file_size
           @transmitter.send "200 #{port}\n", @peer_addr
-          Thread.new do
+          @file_thread = Thread.new do
             file = @transmitter.receive_file
             f = File.open(file_name, 'wb')
             f.write(file)
@@ -138,7 +140,7 @@ class Client
         msg, addr = @transmitter.receive :message, @peer_addr
         code, text = get_args msg
         if code == 200
-          Thread.new do
+          @file_thread = Thread.new do
             addr = Address.new @peer_addr.host, text.to_i
             @transmitter.connect_to_file addr
             @transmitter.send_file args, addr
@@ -162,7 +164,7 @@ class Client
   end
 
 	def start_heartbeat
-		Thread.new do
+		@ht_thread = Thread.new do
 			loop do
 				ans = communicate_with_server "htbeat\n"
 				if ans.split[0].to_i != 200
@@ -179,5 +181,14 @@ class Client
 			ans, addr = @transmitter.receive :message, @server_addr
 			ans
 		end
+  end
+
+  def close
+    @ht_thread.kill unless @ht_thread.nil?
+    @file_thread.kill unless @file_thread.nil?
+    @server_thread.kill unless @server_thread.nil?
+    @talk_thread.kill unless @talk_thread.nil?
+    @transmitter.close unless @transmitter.nil?
+    puts "\nSee you soon!"
   end
 end
