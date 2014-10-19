@@ -184,6 +184,8 @@ class Client
   end
 
   def close
+    @transmitter.send "shutup\n", @peer_addr if @state == :talking
+    @transmitter.send "logout\n", @server_addr
     @ht_thread.kill unless @ht_thread.nil?
     @file_thread.kill unless @file_thread.nil?
     @server_thread.kill unless @server_thread.nil?
